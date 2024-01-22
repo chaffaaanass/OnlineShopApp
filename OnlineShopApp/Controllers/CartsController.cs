@@ -1,7 +1,9 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Security.Claims;
 using System.Threading.Tasks;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -103,5 +105,72 @@ namespace OnlineShopApp.Controllers
         {
             return _context.Carts.Any(e => e.CartId == id);
         }
+
+        [HttpPost("AddToCart/{productId}"), Authorize]
+        public async Task<IActionResult> AddToCart(int productId)
+        {
+            try
+            {
+                // Get the authenticated user's ID
+                string userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+
+                if (string.IsNullOrEmpty(userId))
+                {
+                    return Unauthorized(); // Return 401 Unauthorized if the user is not authenticated
+                }
+
+                // Find the user and the product
+                var user = await _context.Users
+                    .Include(u => u.Carts)
+                    .ThenInclude(c => c.Products)
+                    .SingleOrDefaultAsync(u => u.Id == userId);
+
+                var product = await _context.Products.FindAsync(productId);
+
+                if (user == null || product == null)
+                {
+                    return NotFound();
+                }
+
+                // Check if the user already has a cart
+                var cart = user.Carts.FirstOrDefault();
+
+                if (cart == null)
+                {
+                    // If the user doesn't have a cart, create a new one
+                    cart = new Cart
+                    {
+                        UserId = userId,
+                        User = user,
+                        Products = new List<Product> { product } // Add the product to the new cart
+                    };
+                    _context.Carts.Add(cart);
+                }
+                else
+                {
+                    // Check if the product is already in the cart
+                    if (cart.Products.Any(p => p.ProductId == productId))
+                    {
+                        return BadRequest("Product is already in the cart");
+                    }
+
+                    // Add the product to the existing cart
+                    cart.Products.Add(product);
+                }
+
+                await _context.SaveChangesAsync();
+
+                return Ok("Product added to the cart successfully");
+            }
+            catch (Exception ex)
+            {
+                // Handle exceptions appropriately (log, return error response, etc.)
+                return StatusCode(StatusCodes.Status500InternalServerError, "Error adding product to the cart");
+            }
+        }
+
+
+
+
     }
 }
