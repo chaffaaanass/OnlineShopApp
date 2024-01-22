@@ -1,5 +1,6 @@
 ﻿using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
+using OnlineShopApp.Models;
 
 namespace OnlineShopApp.Models
 {
@@ -13,6 +14,7 @@ namespace OnlineShopApp.Models
         public DbSet<Category> Categories { get; set; }
         public DbSet<Cart> Carts { get; set; }
 
+
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             base.OnModelCreating(modelBuilder);
@@ -25,11 +27,8 @@ namespace OnlineShopApp.Models
                 .HasOne(p => p.Category)
                 .WithMany(c => c.Products)
                 .HasForeignKey(p => p.CategoryId);
-
-            modelBuilder.Entity<Cart>()
-                .HasMany(c => c.Products)
-                .WithMany(p => p.Carts);
             
         }
+        public DbSet<OnlineShopApp.Models.CartItem> CartItem { get; set; } = default!;
     }
 }

@@ -107,11 +107,10 @@ namespace OnlineShopApp.Controllers
         }
 
         [HttpPost("AddToCart/{productId}"), Authorize]
-        public async Task<IActionResult> AddToCart(int productId)
+        public async Task<IActionResult> AddToCart(int productId, int quantity)
         {
             try
             {
-                // Get the authenticated user's ID
                 string userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
 
                 if (string.IsNullOrEmpty(userId))
@@ -119,48 +118,49 @@ namespace OnlineShopApp.Controllers
                     return Unauthorized(); // Return 401 Unauthorized if the user is not authenticated
                 }
 
-                // Find the user and the product
+                // Find the user
                 var user = await _context.Users
-                    .Include(u => u.Carts)
-                    .ThenInclude(c => c.Products)
                     .SingleOrDefaultAsync(u => u.Id == userId);
 
-                var product = await _context.Products.FindAsync(productId);
-
-                if (user == null || product == null)
+                if (user == null)
                 {
-                    return NotFound();
+                    return NotFound("User not found");
                 }
 
-                // Check if the user already has a cart
-                var cart = user.Carts.FirstOrDefault();
+                Cart cart = await _context.Carts
+                    .Include(c => c.CartItems)
+                    .FirstOrDefaultAsync(c => c.UserId == userId);
 
                 if (cart == null)
                 {
-                    // If the user doesn't have a cart, create a new one
-                    cart = new Cart
-                    {
-                        UserId = userId,
-                        User = user,
-                        Products = new List<Product> { product } // Add the product to the new cart
-                    };
+                    cart = new Cart { UserId = userId };
                     _context.Carts.Add(cart);
+                    await _context.SaveChangesAsync();
+                }
+
+                CartItem existingCartItem = cart.CartItems.FirstOrDefault(ci => ci.ProductId == productId);
+
+                if (existingCartItem != null)
+                {
+                    // Update the quantity if the product is already in the cart
+                    existingCartItem.Quantity += quantity;
                 }
                 else
                 {
-                    // Check if the product is already in the cart
-                    if (cart.Products.Any(p => p.ProductId == productId))
+                    // Add a new cart item if the product is not in the cart
+                    var newCartItem = new CartItem
                     {
-                        return BadRequest("Product is already in the cart");
-                    }
+                        ProductId = productId,
+                        Quantity = quantity
+                    };
 
-                    // Add the product to the existing cart
-                    cart.Products.Add(product);
+                    cart.CartItems.Add(newCartItem);
                 }
 
                 await _context.SaveChangesAsync();
 
                 return Ok("Product added to the cart successfully");
+
             }
             catch (Exception ex)
             {

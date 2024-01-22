@@ -12,7 +12,7 @@
         public double Price { get; set; }
         public int CategoryId { get; set; }
         public Category Category { get; set; }
-        public ICollection<Cart> Carts { get; set; }
+        public ICollection<CartItem> CartItems { get; set; } 
     }
 
 }
