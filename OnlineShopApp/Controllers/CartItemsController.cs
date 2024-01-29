@@ -1,11 +1,15 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Text.Json.Serialization;
+using System.Text.Json;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using OnlineShopApp.Models;
+using System.Security.Claims;
+using Microsoft.AspNetCore.Authorization;
 
 namespace OnlineShopApp.Controllers
 {
@@ -102,6 +106,41 @@ namespace OnlineShopApp.Controllers
         private bool CartItemExists(int id)
         {
             return _context.CartItem.Any(e => e.CartItemId == id);
+        }
+        [HttpGet("/api/Carts/CartItems"), Authorize]
+        public async Task<IActionResult> GetCartItemsByUserId()
+        {
+            string userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+
+            if (string.IsNullOrEmpty(userId))
+            {
+                return Unauthorized(); // Return 401 Unauthorized if the user is not authenticated
+            }
+            var cartItems = await _context.Carts
+                .Where(c => c.UserId == userId)
+                .SelectMany(c => c.CartItems)
+                .Include(ci => ci.Product)
+                .ToListAsync();
+
+            var cartItemsWithout = cartItems.Select(ci => new
+            {
+                ci.CartItemId,
+                ci.CartId,
+                ci.ProductId,
+                Product = new
+                {
+                    ci.Product.ProductId,
+                    ci.Product.ProductName,
+                    ci.Product.Description,
+                    ci.Product.Price,
+                    ci.Product.Image,
+                    ci.Product.Quantity
+                    // Add other properties as needed
+                },
+                ci.Quantity
+            }).ToList();
+
+            return Ok(cartItemsWithout);
         }
     }
 }

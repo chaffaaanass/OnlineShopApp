@@ -13,6 +13,7 @@ namespace OnlineShopApp.Models
         public DbSet<Product> Products { get; set; }
         public DbSet<Category> Categories { get; set; }
         public DbSet<Cart> Carts { get; set; }
+        public DbSet<CartItem> CartItem { get; set; }
 
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
@@ -27,8 +28,8 @@ namespace OnlineShopApp.Models
                 .HasOne(p => p.Category)
                 .WithMany(c => c.Products)
                 .HasForeignKey(p => p.CategoryId);
-            
         }
-        public DbSet<OnlineShopApp.Models.CartItem> CartItem { get; set; } = default!;
+
+        
     }
 }

@@ -7,6 +7,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using NuGet.Protocol.Core.Types;
 using OnlineShopApp.Models;
 
 namespace OnlineShopApp.Controllers
@@ -129,6 +130,7 @@ namespace OnlineShopApp.Controllers
 
                 Cart cart = await _context.Carts
                     .Include(c => c.CartItems)
+                    .ThenInclude(ci => ci.Product) 
                     .FirstOrDefaultAsync(c => c.UserId == userId);
 
                 if (cart == null)
@@ -154,13 +156,21 @@ namespace OnlineShopApp.Controllers
                         Quantity = quantity
                     };
 
+                    // Load the associated Product entity
+                    newCartItem.Product = await _context.Products
+                .FirstOrDefaultAsync(p => p.ProductId == productId);
+
+                    if (newCartItem.Product == null)
+                    {
+                        return NotFound("Product not found");
+                    }
+
                     cart.CartItems.Add(newCartItem);
                 }
 
                 await _context.SaveChangesAsync();
 
                 return Ok("Product added to the cart successfully");
-
             }
             catch (Exception ex)
             {
@@ -168,6 +178,7 @@ namespace OnlineShopApp.Controllers
                 return StatusCode(StatusCodes.Status500InternalServerError, "Error adding product to the cart");
             }
         }
+        
 
 
 
